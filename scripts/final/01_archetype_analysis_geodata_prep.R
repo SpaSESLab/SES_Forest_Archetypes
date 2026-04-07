@@ -134,23 +134,30 @@ while(rough_to_fill) {
 }
 print(rough_w)
 
-rough_filled_crop <- crop(rough_filled, ref_rast_proj, mask = TRUE)
+rough_filled_crop <- crop(rough_filled, ref_rast, mask = TRUE)
 plot(roughness)
 plot(rough_filled_crop)
 nrow(as.data.frame(rough_filled_crop))
-nrow(as.data.frame(ref_rast_proj))
+nrow(as.data.frame(ref_rast))
 
 # Calculate the biovars using prec, tmax, and tmin
 
 prec_crop <- crop(r_prec, conus_for_crop, mask = TRUE)
-prec_proj <- project(prec_crop, ref_rast_proj)
+prec_proj <- project(prec_crop, ref_rast)
+#prec_proj <- project(r_prec, ref_rast)
 
 tmax_crop <- crop(r_tmax, conus_for_crop, mask = TRUE)
-tmax_proj <- project(tmax_crop, ref_rast_proj)
+tmax_proj <- project(tmax_crop, ref_rast)
+#tmax_proj <- project(r_tmax, ref_rast)
 
 tmin_crop <- crop(r_tmin, conus_for_crop, mask = TRUE)
-tmin_proj <- project(tmin_crop, ref_rast_proj)
+tmin_proj <- project(tmin_crop, ref_rast)
+#tmin_proj <- project(r_tmin, ref_rast)
 
+# I think they all need to be cropped to conus in order to make a raster brick?
+# or not.
+# They need to be cropped to conus in order to perfectly match the rasters made
+# in Oct 2024.
 bio_calcs <- biovars(brick(prec_proj), brick(tmin_proj), brick(tmax_proj))
 
 temp_seas <- rast(bio_calcs$bio4)
@@ -169,11 +176,11 @@ while(temp_to_fill) {
 }
 print(temp_w)
 
-temp_filled_crop <- crop(temp_filled, ref_rast_proj, mask = TRUE)
+temp_filled_crop <- crop(temp_filled, ref_rast, mask = TRUE)
 plot(temp_seas)
 plot(temp_filled_crop)
 nrow(as.data.frame(temp_filled_crop))
-nrow(as.data.frame(ref_rast_proj))
+nrow(as.data.frame(ref_rast))
 
 # use focal while loop to fill in NAs around the edge of conus
 prec_w <- 1
@@ -188,11 +195,11 @@ while(prec_to_fill) {
 }
 print(prec_w)
 
-prec_filled_crop <- crop(prec_filled, ref_rast_proj, mask = TRUE)
+prec_filled_crop <- crop(prec_filled, ref_rast, mask = TRUE)
 plot(prec_filled_crop)
 plot(prec_seas)
 nrow(as.data.frame(prec_filled_crop))
-nrow(as.data.frame(ref_rast_proj))
+nrow(as.data.frame(ref_rast))
 
 # Save the rasters (during the resample they were aggregated to 3km)
 writeRaster(tt_filled_crop, paste0("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/processed/trav_time_3000m_", 
@@ -208,7 +215,41 @@ writeRaster(temp_filled_crop, paste0("/Users/katiemurenbeeld/Analysis/Archetype_
 
 
 
+## Check that the new rasters (without cropping to conus_for_crop) are the same
+## as the old rasters
 
+tt_filled_crop_old <- rast(here::here("data/processed/variables/trav_time_3000m_2024-10-03.tif"))
+tt_filled_crop == tt_filled_crop_old
+plot(tt_filled_crop)
+plot(tt_filled_crop_old)
+all.equal(tt_filled_crop, tt_filled_crop_old)
+compareGeom(tt_filled_crop, tt_filled_crop_old)
 
+rough_filled_crop_old <- rast(here::here("data/processed/variables/roughness_3000m_2024-10-07.tif"))
+rough_filled_crop == rough_filled_crop_old
+plot(rough_filled_crop)
+plot(rough_filled_crop_old)
+all.equal(rough_filled_crop, rough_filled_crop_old, tolerance = 1e-4)
+compareGeom(rough_filled_crop, rough_filled_crop_old)
+rough_e <- rough_filled_crop == rough_filled_crop_old
+plot(rough_e)
+# I think this is close enough given that the range of values is from 0 to >2000 m
+# Also elevation from Oct 2024 was not cropped to conus_for_crop
 
+prec_filled_crop_old <- rast(here::here("data/processed/variables/prec_seas_3000m_2024-10-07.tif"))
+prec_filled_crop == prec_filled_crop_old
+plot(prec_filled_crop)
+plot(prec_filled_crop_old)
+compareGeom(prec_filled_crop, prec_filled_crop_old)
+all.equal(prec_filled_crop, prec_filled_crop_old, tolerance = 2e-6) 
+# tolerance = 0.0005 when not cropped to conus_for_crop
+# tolerance = 0.000002 when cropped to conus_for_crop
 
+temp_filled_crop_old <- rast(here::here("data/processed/variables/temp_seas_3000m_2024-10-07.tif"))
+temp_filled_crop == temp_filled_crop_old
+plot(temp_filled_crop)
+plot(temp_filled_crop_old)
+compareGeom(temp_filled_crop, temp_filled_crop_old)
+all.equal(temp_filled_crop, temp_filled_crop_old)
+# tolerance = 0.0003 when not cropped to conus_for_crop
+# tolerance = 0.000002 when cropped to conus_for_crop
