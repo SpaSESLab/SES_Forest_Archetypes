@@ -33,7 +33,7 @@ projection <- "epsg:5070"
 ref_rast <- rast("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif")
 
 # Read in the custom functions
-source(here::here("scripts/functions/custom_functions.R"))
+source(here::here("scripts/functions/data_processing_custom_functions.R"))
 
 # 1. Load the data
 #-------------------------------------------------------------------------------
