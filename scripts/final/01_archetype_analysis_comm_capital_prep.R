@@ -8,7 +8,7 @@
 #  1.1 Filter and select variables                                            ##
 #  1.2 This is county level data so need to download county boundaries from   ##
 #      tigris using the year 2020                                             ##
-# 2. Join the aip data to the county geometeries                              ##
+# 2. Join the BRIC data to the county geometeries                             ##
 #  2.1 Check that the new geometries are valid and not empty                  ##
 # 3. Fill in the missing data                                                 ##
 #  3.1 Create an empty raster with 3km resolution                             ##
@@ -80,7 +80,8 @@ bric_fips <- update_fips(bric_2020)
 bric_county <- left_join(counties_2020, bric_fips,
                       by = c("GEOID" = "FIPS"))
 
-## 2.1 check for validity, remove empty geometries, and reproject 
+## 2.1
+## Check for validity, remove empty geometries, and reproject  
 if (!all(st_is_valid(bric_county)))
   bric_county <- st_make_valid(bric_county)
 
