@@ -1,9 +1,23 @@
+################################################################################
+# SCRIPT TO DOWNLOAD AND PROCESS FOREST GAIN DATA TO 3KM                      ##
+# 1. Create the list of tiles (granules) to download from the Hansen et al 2023#
+#    Forest Gain data.                                                        ##
+#https://storage.googleapis.com/earthenginepartners-hansen/GFC-2023-v1.11/download.html
+#  1.1 Download the granules from the website                                 ##
+# 2. Create a function to aggregate the data to 3km                           ##
+#  2.1 Using a list of file names from the downloaded tiles, aggregate the data#
+# 3. Merge the aggregated data into a single raster for the contiguous US     ##
+# 4. Reproject, resample, mask, and crop to the reference raster              ##
+# 5. Save the raster                                                          ##
+################################################################################
+
 ## Download and process raster data of temperature and precipitation
 ## Download and process travel time data
 ## Download elevation data and calculate a topographic complexity index
 ## focal while loop from stack overflow: https://stackoverflow.com/questions/73271223/how-to-fill-na-gaps-by-idw-using-focal-r-raster-terra
 
-# 0. Load libraries and set projection
+# 0. Load the required libraries
+#-------------------------------------------------------------------------------
 library(sf) # for working with vector data
 library(raster) # for working with rasters
 library(sp) # for working with spatial (vector) data
@@ -15,10 +29,17 @@ library(dismo) # needed to calculate biovars
 library(gstat)
 library(stars)
 
-projection <- "epsg:5070"
+# Set the projection
+# NOTE: Projection will distort the raw data because it is in seconds 
+#       (and so not perfect squares)
+projection = "epsg:5070"
+
+# Load reference raster
+ref_rast <- rast(here::here("data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif"))
 
 # 1. Download the data using the geodata package
-
+#-------------------------------------------------------------------------------
+## NOTE: This can take a few minutes and the files are large
 #r_prec <- geodata::worldclim_country(country = "US", var = "prec", res = 0.5, path = tempdir(), mask=TRUE)
 #r_tmin <- geodata::worldclim_country(country = "US", var = "tmin", res = 0.5, path = here::here("data/original"))
 #r_tmax <- geodata::worldclim_country(country = "US", var = "tmax", res = 0.5, path = here::here("data/original"))
@@ -32,13 +53,8 @@ r_ele <- rast(here::here("data/original/elevation/USA_elv_msk.tif"))
 r_tt <- rast(here::here("data/original/travel/travel_time_to_cities_u7.tif"))
 
 
-# projection will distort the raw data because it is in seconds (and so not perfect squares)
-
-# Load the reference raster and reproject
-ref_rast <- rast("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/processed/merged/conus_whp_3km_agg_interp_crop_2024-09-27.tif")
-ref_rast_proj <- project(ref_rast, projection)
-
 # 2. Crop to CONUS, because the files are global, it is more efficient to crop to the extant of conus states first
+#-------------------------------------------------------------------------------
 ## Using tigris, download the state boundaries
 
 ### Load the states from tigris
@@ -54,27 +70,18 @@ us.states$state <- as.character(us.states$state)
 us.states$STATENAME <- as.character(us.states$STATENAME)
 continental.states <- us.states[us.states$state != "AK" & us.states$state != "HI",] #only CONUS
 
-### Filter tigris states for conus states and set crs to projection
-#conus_states <- states %>%
-#  filter(STUSPS %in% continental.states$state) %>%
-#  dplyr::select(STUSPS, GEOID, geometry) %>%
-#  st_transform(., crs = crs(projection))
-
+### Filter tigris states for conus states and set crs to one of the downloaded
+### rasters. conus_for_crop is needed for the climate variables, but not the 
+### travel time or elevation data. 
 conus_for_crop <- states %>%
   filter(STUSPS %in% continental.states$state) %>%
   dplyr::select(STUSPS, GEOID, geometry) %>%
   st_transform(., crs = crs(r_tt))
 
-# create a function to crop to conus, reproject, aling and crop to ref raster
-crop_project <- function(raster, states, ref_raster, states_proj){
-  r_crop <- crop(raster, states) # First, crop to the extents of states
-  r_proj <- project(r_crop, ref_raster) # then reproject using ref raster
-  r_conus <- crop(r_proj, ref_raster, mask = TRUE) # then crop again to the ref raster and mask
-  return(r_conus)
-}
-
+# Crop and mask to conus then project to reference raster
 tt_crop <- crop(r_tt, conus_for_crop, mask = TRUE)
-tt_proj <- project(tt_crop, ref_rast_proj)
+#tt_proj <- project(tt_crop, ref_rast)
+tt_proj <- project(r_tt, ref_rast)
 plot(tt_proj)
 
 # use a while loop to fill in NAs at edges of Conus with focal window
@@ -89,12 +96,12 @@ while(tt_to_fill) {
 }
 print(tt_w)
 
-tt_filled_crop <- crop(tt_filled, ref_rast_proj, mask = TRUE)
+tt_filled_crop <- crop(tt_filled, ref_rast, mask = TRUE)
 plot(tt_filled_crop)
 nrow(as.data.frame(tt_filled_crop))
-nrow(as.data.frame(ref_rast_proj))
+nrow(as.data.frame(ref_rast))
 
-ele_proj <- project(r_ele, ref_rast_proj)
+ele_proj <- project(r_ele, ref_rast)
 
 # use a while loop to fill in NAs at edges of Conus with focal window
 ele_w <- 1
@@ -108,11 +115,11 @@ while(ele_to_fill) {
 }
 print(ele_w)
 
-ele_filled_crop <- crop(ele_filled, ref_rast_proj, mask = TRUE)
+ele_filled_crop <- crop(ele_filled, ref_rast, mask = TRUE)
 plot(ele_proj)
 plot(ele_filled_crop)
 nrow(as.data.frame(ele_filled_crop))
-nrow(as.data.frame(ref_rast_proj))
+nrow(as.data.frame(ref_rast))
 
 roughness <- terrain(ele_proj, v = "roughness")
 # use a while loop to fill in NAs at edges of Conus with focal window
@@ -187,7 +194,7 @@ plot(prec_seas)
 nrow(as.data.frame(prec_filled_crop))
 nrow(as.data.frame(ref_rast_proj))
 
-# save the rasters (during the resample they were aggregated to 3km)
+# Save the rasters (during the resample they were aggregated to 3km)
 writeRaster(tt_filled_crop, paste0("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/processed/trav_time_3000m_", 
                                Sys.Date(), ".tif"), overwrite = TRUE)
 writeRaster(rough_filled_crop, paste0("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/processed/roughness_3000m_", 
