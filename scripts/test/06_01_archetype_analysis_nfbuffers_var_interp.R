@@ -2,8 +2,11 @@
 # SCRIPT TO GENERATE THE "BAR CODE" PLOTS NATIONAL FOREST LEVEL SGFCM CLUSTERS##                 ##
 # 1. Load the data                                                            ##                                   ##
 # 2. Format the data for creating the bar code plots                          ##
-#  k = 27, m = 1.2, alpha = 0.1, beta = 0.1, window size = 3x3                ##
-#  2.1 Save the model as an RDS                                               ##
+# 3. Create bar plots with the mean, median, and standard deviation of values ##
+# 4. Create bar plots where the IQR does not overlap with 0                   ##
+# 4.1 Write a function to calculate the 25th and 75th percentiles and check   ##
+#     if the IQR range overlaps 0                                             ##
+# 4.2 Format the data for creating the bar plots
 # 3. Extract and plot the raster of the cluster groups                        ##
 #  3.1 Save the cluster groups raster                                         ##
 # NOTE TO SELF: INSTEAD OF OSTROM SES NEED TO RENAME TO VARIABLES TO IAD CLASS##
@@ -90,7 +93,8 @@ long_reorder <- long_reorder %>%
                             var_name == "distwild" | var_name == "distcrit" | var_name == "forgain" ~ "resource unit",
                             var_name == "fedrich" | var_name == "pm25" | var_name == "treeage" | var_name == "pct_forpay" | var_name == "pct_delmill" | var_name == "netmig" | var_name == "comm_cap" | var_name == "aip" | var_name == "travtime" | var_name == "hsbrd" | var_name == "engbrd" | var_name == "lesshs" ~ "users"))
 
-# Create bar plots with the mean, standard deviation, and medians
+# 3. Create bar plots with the mean, standard deviation, and medians
+#-------------------------------------------------------------------------------
 var_interp <- ggplot(long_reorder, aes(x = var_name, y = mean, fill = ostrom)) +
   geom_col() +
   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,
@@ -116,8 +120,8 @@ var_interp_sd <- ggplot(long_reorder, aes(x = var_name, y = sd, fill = ostrom)) 
         axis.title.y = element_blank()) 
 
 var_interp_sd
-ggsave(paste0("~/Analysis/SES_Forest_Archetypes/figures/sgfcm_nfbuffers_var_interp_sd_", Sys.Date(), ".png"), 
-       plot = var_interp_sd, width = 12, height = 8, dpi = 300) 
+#ggsave(paste0("~/Analysis/SES_Forest_Archetypes/figures/sgfcm_nfbuffers_var_interp_sd_", Sys.Date(), ".png"), 
+#       plot = var_interp_sd, width = 12, height = 8, dpi = 300) 
 
 var_interp_med <- ggplot(long_reorder, aes(x = var_name, y = median, fill = ostrom)) +
   geom_col() +
@@ -131,11 +135,15 @@ var_interp_med <- ggplot(long_reorder, aes(x = var_name, y = median, fill = ostr
         axis.title.y = element_blank()) 
 
 var_interp_med
-ggsave(paste0("~/Analysis/SES_Forest_Archetypes/figures/sgfcm_nfbuffers_var_interp_med_", Sys.Date(), ".png"), 
-       plot = var_interp_med, width = 12, height = 8, dpi = 300)
+#ggsave(paste0("~/Analysis/SES_Forest_Archetypes/figures/sgfcm_nfbuffers_var_interp_med_", Sys.Date(), ".png"), 
+#       plot = var_interp_med, width = 12, height = 8, dpi = 300)
 
 
-# Create bar plots of the variables where IQR != 0
+# 4. Create bar plots of the variables where IQR != 0
+#-------------------------------------------------------------------------------
+## 4.1
+## Create a function that calculates the 25th and 75th percentiles and checks if
+## the IQR range overlaps with 0
 check_iqr_overlap <- function(x) {
   # Calculate the 25th and 75th percentiles
   lower <- quantile(x, 0.25, na.rm = TRUE)
@@ -145,36 +153,39 @@ check_iqr_overlap <- function(x) {
   return(lower <= 0 & upper >= 0)
 }
 
+## Create a dataframe of the overlapping variables 
 overlap <- long_df %>% 
   group_by(groups, var_name) %>% 
   summarise(overlap = check_iqr_overlap(value), .groups="drop")
 
-
+## 4.2
+## Reformat the data to create the bar plots
 long_join <- long_df %>% 
   left_join(overlap) %>% 
   filter(overlap == FALSE)
 
-# reorder the variables
+## reorder the variables
 long_overlap_reorder <- long_join %>% 
   mutate(var_name = fct_relevel(var_name, 
                                 "treecov", "forprod", "tempseas", 
                                 "precseas", "rough", "whp", 
                                 "forgain", 
-                                #"distcrit", 
+                                "distcrit", 
                                 "distwild",
                                 "pm25", "fedrich", 
                                 "treeage", "pct_forpay", "pct_delmill",
                                 "netmig", "comm_cap", "aip",
-                                "travtime", "hsbrd", "engbrd"
-                                #"lesshs"
+                                "travtime", "hsbrd", "engbrd",
+                                "lesshs"
                                 ))
-
+## Reclassify the variables
 long_overlap_reorder <- long_overlap_reorder %>% # need to remove dist to critical habitat and less hs
   mutate(ostrom = case_when(var_name == "treecov" | var_name == "forprod" | var_name == "tempseas" | var_name == "precseas" | var_name == "rough" | var_name == "whp" ~ "resource system",
-                            var_name == "distwild" | var_name == "forgain" ~ "resource unit",
+                            var_name == "distcrit" | var_name == "distwild" | var_name == "forgain" ~ "resource unit",
                             var_name == "fedrich" | var_name == "pm25" | var_name == "treeage" | var_name == "pct_forpay" | var_name == "pct_delmill" | var_name == "netmig" | var_name == "comm_cap" | var_name == "aip" | var_name == "travtime" | var_name == "hsbrd" | var_name == "engbrd" | var_name == "lesshs" ~ "users"))
 
-
+# 5. Create bar plots with no overlapping IQR 
+#-------------------------------------------------------------------------------
 iqr_no_overlap <- ggplot(data=long_overlap_reorder, mapping = aes(x=var_name, y=value, fill=ostrom)) +
   geom_boxplot(outliers = FALSE, coef=0) +
   geom_hline(yintercept = 0, linetype=2) +
@@ -184,10 +195,14 @@ iqr_no_overlap <- ggplot(data=long_overlap_reorder, mapping = aes(x=var_name, y=
   facet_wrap(vars(groups))
 
 iqr_no_overlap
-#ggsave(paste0("~/Analysis/Archetype_Analysis/figures/sgfcm_all_k6_var_interp_iqr_no_overlap_", Sys.Date(), ".png"), 
-#       plot = k6_iqr_no_overlap, width = 12, height = 8, dpi = 300)
+#ggsave(paste0("~/Analysis/SES_Forest_Archetypes/outputs/sgfcm_nfbuffer_k27_var_interp_iqr_no_overlap_", Sys.Date(), ".png"), 
+#       plot = iqr_no_overlap, width = 12, height = 8, dpi = 300)
 
-# Create bar plots of the standard deviation for the values that do overlap with 0
+# 6. Create bar plots of the standard deviation for the values that do overlap 
+#    with 0
+#-------------------------------------------------------------------------------
+
+
 long_join_overlap_true <- long_df %>% 
   left_join(overlap) %>% 
   filter(overlap == TRUE)
@@ -199,16 +214,16 @@ sd_overlap <- long_join_overlap_true %>%
 # reorder the variables
 sd_overlap_reorder <- sd_overlap %>% 
   mutate(var_name = fct_relevel(var_name, 
-                                #"treecov", 
+                                "treecov", 
                                 "forprod", "tempseas", 
                                 "precseas", "rough", "whp", 
                                 "forgain", 
                                 "distcrit", 
                                 "distwild",
-                                #"pm25", 
+                                "pm25", 
                                 "fedrich", 
                                 "treeage", "pct_forpay", 
-                                #"pct_delmill",
+                                "pct_delmill",
                                 "netmig", "comm_cap", "aip", 
                                 "travtime", "hsbrd", "engbrd", "lesshs"))
 
@@ -217,7 +232,8 @@ sd_long_overlap_reorder <- sd_overlap_reorder %>% # need to remove treecover, pm
                             var_name == "distwild" | var_name == "distcrit" |  var_name == "forgain" ~ "resource unit",
                             var_name == "fedrich" | var_name == "treeage" | var_name == "pct_forpay" | var_name == "netmig" | var_name == "comm_cap" | var_name == "aip" | var_name == "travtime" | var_name == "hsbrd" | var_name == "engbrd" | var_name == "lesshs" ~ "users"))
 
-
+# 7. Plot the SD for variables with IQRs that do overlap with 0
+#-------------------------------------------------------------------------------
 sd_overlap <- ggplot(sd_long_overlap_reorder, aes(x = var_name, y = sd, fill = ostrom)) +
   geom_col() +
   #scale_fill_brewer(palette = "Set2") +

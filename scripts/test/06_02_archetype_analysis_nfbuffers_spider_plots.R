@@ -1,5 +1,5 @@
 ################################################################################
-# SCRIPT TO GENERATE THE RADIAL PLOTS AND CONDENSING CLUSTERS                 ##
+# SCRIPT TO GENERATE THE RADAR CHARTS ("SPIDER PLOTS") AND CONDENSE CLUSTERS  ##
 # 1. Load the data                                                            ##                                   ##
 # 2. 
 ################################################################################
@@ -170,7 +170,3 @@ write.csv(as.data.frame(masked_matrix),
           file = here::here("outputs/sgfcm_nfbuffers_spider_plot_overlap_matrix_test_mask.csv"))
 
 
-group9_ply <- create_poly(9)
-
-plot(group4_ply$geometry)
-plot(group9_ply$geometry, add = TRUE, color = "blue")
