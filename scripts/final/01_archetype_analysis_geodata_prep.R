@@ -243,13 +243,13 @@ nrow(as.data.frame(ref_rast))
 #-------------------------------------------------------------------------------
 ## travel time
 writeRaster(tt_filled_crop, here::here(paste0("data/processed/variables/trav_time_3000m_", 
-                               Sys.Date(), ".tif"), overwrite = TRUE))
+                               Sys.Date(), ".tif")), overwrite = TRUE)
 ## roughness
 writeRaster(rough_filled_crop, here::here(paste0("data/processed/variables/roughness_3000m_", 
-                               Sys.Date(), ".tif"), overwrite = TRUE))
+                               Sys.Date(), ".tif")), overwrite = TRUE)
 ## precip seasonality
 writeRaster(prec_filled_crop, here::here(paste0("data/processed/variables/prec_seas_3000m_", 
-                               Sys.Date(), ".tif"), overwrite = TRUE))
+                               Sys.Date(), ".tif")), overwrite = TRUE)
 ## temp seasonality
 writeRaster(temp_filled_crop, here::here(paste0("data/processed/variables/temp_seas_3000m_", 
                                Sys.Date(), ".tif"), overwrite = TRUE))
