@@ -60,7 +60,6 @@ for (state in st_list[31:48,]) {
   download_fire(state)
 }
 
-
 # 3. Merge the state .tifs before aggregating to avoid gaps between the states
 #-------------------------------------------------------------------------------
 ## Set the prefix
