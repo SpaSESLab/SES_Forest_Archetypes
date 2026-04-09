@@ -39,7 +39,7 @@ options(timeout=6000)
 projection <- "epsg:5070"
 
 # Load the reference raster
-ref_rast <- rast("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif")
+ref_rast <- rast(here::here("data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif"))
 
 # Read in the custom functions
 source(here::here("scripts/functions/data_processing_custom_functions.R"))
@@ -74,7 +74,7 @@ for (s in states_list){
 }
 
 ## read in the fia data
-fia <- readFIA("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/original/fia/", tables = "COND", inMemory = TRUE)
+fia <- readFIA(here::here("data/original/fia"), tables = "COND", inMemory = TRUE)
 
 ## from the COND table select the STATECD, COUNTYCD, SITECLCD
 conus_prod <- dplyr::select(fia$COND, STATECD, COUNTYCD, SITECLCD)
@@ -163,5 +163,5 @@ plot(forprod_crop)
 
 # 9. Save the raster
 #-------------------------------------------------------------------------------
-writeRaster(forprod_crop, paste0("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/data/processed/variables/fia_for_prod_3km_pred_crop_", 
-                                         Sys.Date(), ".tif"))
+writeRaster(forprod_crop, here::here(paste0("data/processed/variables/fia_for_prod_3km_pred_crop_", 
+                                         Sys.Date(), ".tif")))
