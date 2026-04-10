@@ -118,8 +118,8 @@ plot(aip_crop)
 
 # 5. Save the raster
 #-------------------------------------------------------------------------------
-#writeRaster(aip_crop, paste0("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/data/processed/variables/aip_3km_pred_crop_", 
-#                                         Sys.Date(), ".tif"))
+#writeRaster(aip_crop, here::here(paste0("data/processed/variables/aip_3km_pred_crop_", 
+#                                         Sys.Date(), ".tif")), overwrite = TRUE)
 
 
 
