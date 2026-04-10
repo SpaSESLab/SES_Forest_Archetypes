@@ -44,6 +44,9 @@ projection = "epsg:5070"
 
 # 1. Load padus data and get the Fee layer
 #-------------------------------------------------------------------------------
+## Data can be found here: 
+## https://www.sciencebase.gov/catalog/item/652d4fc5d34e44db0e2ee45e
+
 fed <- st_read(here::here("data/original/PADUS4_0Geodatabase/PADUS4_0_Geodatabase.gdb"),
                layer = "PADUS4_0Fee") 
 
