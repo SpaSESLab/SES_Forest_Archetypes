@@ -1,3 +1,20 @@
+################################################################################
+# SCRIPT TO DOWNLOAD AND PROCESS NET MIGRATION DATA FROM THE CENSUS TO 3KM    ##
+# 1. Load the data                                                            ##
+#  1.1 Filter and select variables                                            ##
+#  1.2 This is county level data so need to download county boundaries from   ##
+#      tigris using the year 2023                                             ##
+# 2. Join the census data to the county geometeries                           ##
+#  2.1 Check that the new geometries are valid and not empty                  ##
+# 3. Fill in the missing data                                                 ##
+#  3.1 Create an empty raster with 3km resolution                             ##
+#  3.2 Use a custom function to interpolate the missing data                  ##
+# 4. Crop and mask the raster prediction to the ref_raster                    ##
+# 5. Save the raster                                                          ##
+################################################################################
+
+# 0. Load the required libraries
+#-------------------------------------------------------------------------------
 library(stringr)
 library(sf)
 library(terra)
@@ -12,13 +29,36 @@ library(stars)
 # Set the projection
 projection <- "epsg:5070"
 
-# Load the data
-del_pop_cen <- read_csv("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/original/census_2023_comp_est.csv")
+# Load the reference raster
+ref_rast <- rast(here::here("data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif"))
 
-# Load the reference raster and reproject
-ref_rast <- rast("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/processed/merged/conus_whp_3km_agg_interp_crop_2024-09-27.tif")
-ref_rast_proj <- project(ref_rast, projection)
+# Read in the custom functions
+source(here::here("scripts/functions/data_processing_custom_functions.R"))
 
+
+# 1. Load the data
+#-------------------------------------------------------------------------------
+## The data can be downloaded from:
+## 
+
+del_pop_cen <- read_csv(here::here("data/original/net_mig/census_2023_comp_est.csv"))
+
+## 1.1
+## Select the NETMIG2022 (net migration from 2022), STATE, and COUNTY codes
+delpop_cen <- del_pop_cen %>% # needs 2023 counties
+  dplyr::select(STATE, COUNTY, NETMIG2022)
+
+### Combine the state and county codes to make the FIPS codes
+delpop_cen <- delpop_cen %>%
+  mutate(STATE = as.character(STATE), 
+         COUNTY = as.character(COUNTY)) %>%
+  mutate(FIPS = paste(STATE, COUNTY, sep = ""))
+
+### Use the update_fips function to pad all FIPS codes in your data with 0s for
+### a total of 5 characters 
+delpop_fips <- update_fips(delpop_cen)
+
+## 1.2
 ## Load county boundaries from tigris
 ### Get Continental US list
 us.abbr <- unique(fips_codes$state)[1:51]
@@ -37,41 +77,26 @@ counties_2023 <- counties_2023 %>%
   filter(STATEFP %in% continental.states$FIPS) %>%
   dplyr::select(GEOID, geometry)
 
-## Net and ave change in population and % change in migration (rate?), using census data
-delpop_cen <- del_pop_cen %>% # needs 2023 counties
-  mutate(pct_mig = ((NPOPCHG2023 - NPOPCHG2020)/NPOPCHG2020) * 100,
-         ave_del_pop = ((NPOPCHG2020 + NPOPCHG2021 + NPOPCHG2022 + NPOPCHG2023)/4)) %>%
-  dplyr::select(STATE, COUNTY, NPOPCHG2023, NETMIG2022, ave_del_pop, pct_mig)
-
-delpop_cen <- delpop_cen %>%
-  mutate(STATE = as.character(STATE), 
-         COUNTY = as.character(COUNTY)) %>%
-  mutate(FIPS = paste(STATE, COUNTY, sep = ""))
-
-## Make sure all FIPS codes are padded with 0s for a total of 5 characters
-update_fips <- function(data_set) {
-  data_set$FIPS <- as.character(data_set$FIPS)
-  data_set$FIPS <- str_pad(data_set$FIPS, 5, side="left", pad="0")
-  return(data_set)
-}
-
-delpop_fips <- update_fips(delpop_cen)
-
-## join to the 2020 counties
+# 2. Join the data to the county geometries
+#-------------------------------------------------------------------------------
+## join to the 2023 counties
 delpop_county <- left_join(counties_2023, delpop_fips,
                       by = c("GEOID" = "FIPS"))
 
-## check for validity, remove empty geometries, and reproject 
+## 2.1 check for validity, remove empty geometries, and reproject 
 if (!all(st_is_valid(delpop_county)))
   delpop_county <- st_make_valid(delpop_county)
 
 delpop_county <- delpop_county %>%
   filter(!st_is_empty(.))
 
+## Set the projection 
 delpop_proj <- delpop_county %>%
   st_transform(projection)
 
-## Create a template raster for the shapefiles
+# 3. Fill in missing data
+#-------------------------------------------------------------------------------
+## 3.1 Create a template raster for the shapefiles
 XMIN <- ext(ref_rast_proj)$xmin
 XMAX <- ext(ref_rast_proj)$xmax
 YMIN <- ext(ref_rast_proj)$ymin
@@ -86,26 +111,18 @@ templateRas <- rast(ncol=NCOLS, nrow=NROWS,
 
 grd <- st_as_stars(templateRas)
 
-# function to rasterize variable, make points, make predictions
-# raster_grid is like a reference raster
-idw_preds <- function(data_proj, ref_raster, lay, empty_grid){
-  var.rst <- rasterize(data_proj, ref_raster, field = lay, fun = "mean")
-  var.pt <- as.points(var.rst) %>%
-    st_as_sf(.)
-  var.pred <- idw(var.pt[[1]]~1, var.pt, empty_grid)
-  var.pred.rst <- rasterize(st_as_sf(var.pred), ref_raster, field = "var1.pred")
-  names(var.pred.rst) <- paste0(lay, ".pred")
-  var.pred.rst.crop <- crop(var.pred.rst, ref_raster, mask = TRUE)
-  #return(var.pred.rst)
-  return(c(orig.rst = var.rst, pred.rst = var.pred.rst.crop))
-}
-
+## 3.2 Use the idw_preds function to rasterize and fill in missing data using 
+##     inverse distance weigthing (idw)
 delpop.preds <- idw_preds(delpop_proj, templateRas, "NETMIG2022", grd)
-plot(delpop.preds$orig.rst)
-# Crop to reference raster
+
+# 4. Crop to reference raster
+#-------------------------------------------------------------------------------
 delpop_crop <- crop(delpop.preds$pred.rst, ref_rast_proj, mask = TRUE)
+
+# quick check that it cropped
 plot(delpop_crop)
 
-# Save raster 
-writeRaster(delpop_crop, paste0("/Users/katiemurenbeeld/Analysis/Archetype_Analysis/data/processed/net_mig_2023_3km_pred_crop_", 
-                                         Sys.Date(), ".tif"))
+# 5. Save the raster
+#------------------------------------------------------------------------------- 
+writeRaster(delpop_crop, here::here(paste0("data/processed/variables/net_mig_2023_3km_pred_crop_", 
+                                         Sys.Date(), ".tif")), overwrite = TRUE)
