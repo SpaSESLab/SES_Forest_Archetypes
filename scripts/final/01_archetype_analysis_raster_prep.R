@@ -32,7 +32,6 @@ ref_rast <- rast(here::here("data/processed/variables/conus_whp_3km_agg_interp_c
 # 1. Load the data
 #-------------------------------------------------------------------------------
 fed_rich <- rast(here::here("data/processed/fed_rich/conus_fed_rich_2024-06-12.tif"))
-# fed rich from ~/Analysis/Archetype_Analysis/scripts/test/00_test_area_rich_fed_padus.R
 tree_cover <- rast(here::here("data/original/tree_cover/nlcd_tcc_conus_2016_v2021-4.tif"))
 tree_age <- rast(here::here("data/original/tree_age/conus_age06_1km.tif"))
 
