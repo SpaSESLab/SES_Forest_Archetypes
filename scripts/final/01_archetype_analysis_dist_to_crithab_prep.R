@@ -75,7 +75,7 @@ names(crithab_dist_crop) <- "distance_to_crithab_m"
 
 # 5. Save the raster
 #-------------------------------------------------------------------------------
-writeRaster(crithab_dist_crop, paste0("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/data/processed/variables/dist_to_crithab_3km_pred_crop_", 
-                                 Sys.Date(), ".tif"), overwrite = TRUE)
+writeRaster(crithab_dist_crop, here::here(paste0("data/processed/variables/dist_to_crithab_3km_pred_crop_", 
+                               Sys.Date(), ".tif")), overwrite = TRUE)
 
 

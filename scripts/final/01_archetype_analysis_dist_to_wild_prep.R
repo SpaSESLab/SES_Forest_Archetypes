@@ -27,7 +27,7 @@ library(stars)
 projection <- "epsg:5070"
 
 # Load the reference raster
-ref_rast <- rast("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif")
+ref_rast <- rast(here::here("data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif"))
 
 # 1. Load the Wilderness Areas shapefile
 #-------------------------------------------------------------------------------
