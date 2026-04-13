@@ -1,0 +1,16 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+**/.DS_Store
+data/original/*
+!data/original/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/final/*
+!data/final/.gitkeep
+outputs/test/*
+!outputs/test/.gitkeep
+outputs/final/*
+!outputs/final/.gitkeep
