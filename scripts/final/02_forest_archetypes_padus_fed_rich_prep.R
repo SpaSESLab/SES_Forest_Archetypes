@@ -23,6 +23,8 @@
 #  4.4 Summarise the data, for each grid cell get the number of unique agencies#
 # 5. Rasterize the data                                                       ##
 # 6. Save the raster                                                          ##
+# 7. Fill NAs with 0 and process the raster to 3km using the reference raster ##
+# 8. Save the final raster                                                    ##
 ################################################################################
 
 # 0. Load the libraries
@@ -39,8 +41,12 @@ library(units)
 library(purrr)
 library(progress)
 
-## set the projection
-projection = "epsg:5070"
+# Set the projection
+projection <- "epsg:5070"
+
+# Load the reference raster
+ref_rast <- rast(here::here("data/processed/variables/conus_whp_3km_agg_interp_crop_2024-09-27.tif"))
+
 
 # 1. Load padus data and get the Fee layer
 #-------------------------------------------------------------------------------
@@ -184,3 +190,17 @@ writeRaster(intersectFeatures_rich_rst,
                               Sys.Date(), 
                               ".tif")), 
             overwrite = TRUE)
+
+# 7. Process the raster to 3km and to be aligned with the reference raster
+#-------------------------------------------------------------------------------
+# Fill NAs with 0, then align and crop to reference raster
+fed_rich <- rast(here::here("data/processed/fed_rich/conus_fed_rich_2024-06-12.tif"))
+
+fed_rich[is.na(fed_rich)] <- 0
+fed_rich_align <- resample(fed_rich, ref_rast, "near")
+fed_rich_crop <- crop(fed_rich_align, ref_rast, mask = TRUE)
+
+# 8. Save the final fed rich raster
+#-------------------------------------------------------------------------------
+writeRaster(fed_rich_crop, here::here(paste0("data/processed/variables/conus_fed_rich_crop_", 
+                                             Sys.Date(), ".tif")))

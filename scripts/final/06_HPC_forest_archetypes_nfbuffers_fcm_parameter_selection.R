@@ -33,19 +33,25 @@ future::plan(future::multisession(workers = 48))
 ## spconsist = FALSE because this is a non-spatial model.
 
 # Set a SLURM array task ID to aid in the parallelization of the parameter 
-# selection grid search.
+# selection grid search. This will determine how you set up the sbatch in when
+# you actually run the job on Borah. For example, to run with a range of 
+# k = 5:10 you would type sbatch --array=4-9 06_r-slurm_fcm.sh
+# conversely, you could type sbatch --array=1-6 06_r-slurm_fcm.sh 
+# but then you would need to update 6th line in the code block below to be
+# task_id <- task_id + 4
 
 task_id <- Sys.getenv("SLURM_ARRAY_TASK_ID")
 if (task_id == "") {
   task_id <- 1
 } else {
         task_id <- as.numeric(task_id)
-        task_id <- task_id + 50  
+        task_id <- task_id + 1  
 }
 
 print(task_id)
 
-# k = 2:108
+## Here we are running the select_parameters.mc() for a range of 
+## k values from 2:108
 
 FCMvalues <- select_parameters.mc(algo = "FCM", data = dataset, standardize = FALSE,
                                   k = task_id, m = seq(1.1,2,0.1), spconsist = FALSE,
