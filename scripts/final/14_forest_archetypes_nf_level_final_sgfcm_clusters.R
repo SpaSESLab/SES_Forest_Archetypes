@@ -19,6 +19,7 @@ library(ggplot2)
 library(geocmeans)
 library(RColorBrewer)
 library(viridis)
+library(here)
 
 
 # 1. Load the data
@@ -46,8 +47,8 @@ SGFCM_result <- SGFCMeans(dataset, k = 27, m = 1.2, standardize = FALSE,
                               window = w, alpha = 0.1, beta = 0.1,
                               seed = 6891, tol = 0.001, verbose = TRUE, init = "kpp")
 ## 2.1 Save the model as an RDS
-saveRDS(SGFCM_result, paste0("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/outputs/SGFCM_nf_buffers_k27_", 
-                             Sys.Date(), ".rds"))
+saveRDS(SGFCM_result, here::here(paste0("/outputs/SGFCM_nf_buffers_k27_", 
+                             Sys.Date(), ".rds")))
 # 3. Extract and plot the rasters of the resulting clusters
 #-------------------------------------------------------------------------------
 map_SGFCM_result <- rast(SGFCM_result$rasters)
@@ -55,5 +56,6 @@ plot(map_SGFCM_result[["Groups"]])
 
 
 ## 3.1 Save the cluster raster as a tif
-writeRaster(map_SGFCM_result[["Groups"]], filename = paste0("/Users/katiemurenbeeld/Analysis/SES_Forest_Archetypes/outputs/SGFCM_nf_buffers_k27_", 
-                                                            Sys.Date(), ".tif"))
+writeRaster(map_SGFCM_result[["Groups"]], 
+            filename = here::here(paste0("/outputs/SGFCM_nf_buffers_k27_", 
+                                         Sys.Date(), ".tif")))
