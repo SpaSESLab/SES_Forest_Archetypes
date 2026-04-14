@@ -23,7 +23,9 @@ library(scales)
 #-------------------------------------------------------------------------------
 ## Get a list of all the files in the directory
 file_list <- list.files(path = here::here("outputs/nf_level/sfcm/"), 
-                        pattern = "*.csv", 
+                        # only need window size 1 (3x3) w2 and w3 produce Inf
+                        # spatial inconsistency
+                        pattern = "w1", 
                         full.names = TRUE)
 
 ## Read all files and combine into a dataframe
@@ -125,36 +127,38 @@ ei05_si_scaled_y <- ggplot(df_ei05, aes(k)) +
   geom_point(aes(y = Explained.inertia), colour = "blue", alpha = 0.5) +
   geom_point(aes(y = sec1$fwd(Silhouette.index)), colour = "red", alpha = 0.5) +
   scale_y_continuous(sec.axis = sec_axis(~sec1$rev(.), name = "Silhouette.index")) + 
-  facet_grid(rows = vars(beta), cols = vars(m)) +
-  labs(title = "National Level GFCM: Explained Inertia >= 0.5")
-
+  facet_grid(rows = vars(alpha), cols = vars(m)) +
+  labs(title = "National Level SFCM 3x3 window: \nExplained Inertia >= 0.5")
+ei05_si_scaled_y
 
 ei05_si03_scaled_y <- ggplot(df_ei05_si03, aes(k)) +
   geom_point(aes(y = Explained.inertia), colour = "blue", alpha = 0.5) +
   geom_point(aes(y = sec2$fwd(Silhouette.index)), colour = "red", alpha = 0.5) + 
   scale_y_continuous(sec.axis = sec_axis(~sec2$rev(.), name = "Silhouette.index")) + 
-  facet_grid(rows = vars(beta), cols = vars(m)) +
-  labs(title = "National Level GFCM: Explained Inertia >= 0.5 & \nSilhouette Index >= 0.3")
+  facet_grid(rows = vars(alpha), cols = vars(m)) +
+  labs(title = "National Level SFCM 3x3 window: \nExplained Inertia >= 0.5 & Silhouette Index >= 0.3")
+ei05_si03_scaled_y
 
 ei06_si03_scaled_y <- ggplot(df_ei06_si03, aes(k)) +
   geom_point(aes(y = Explained.inertia), colour = "blue", alpha = 0.5) +
   geom_point(aes(y = sec3$fwd(Silhouette.index)), colour = "red", alpha = 0.5) + 
   scale_y_continuous(sec.axis = sec_axis(~sec3$rev(.), name = "Silhouette.index")) + 
-  facet_grid(rows = vars(beta), cols = vars(m)) +
-  labs(title = "National Level GFCM: Explained Inertia >= 0.6 & \nSilhouette Index >= 0.3")
+  facet_grid(rows = vars(alpha), cols = vars(m)) +
+  labs(title = "National Level SFCM 3x3 window: \nExplained Inertia >= 0.6 & Silhouette Index >= 0.3")
+ei06_si03_scaled_y
 
 # 6. Save the figures with the dual y-axis
 #-------------------------------------------------------------------------------
 
-ggsave(here::here(paste0("outputs/nf_level/plots/nf_level_gfcm_parma_ei05_si_scaled_y_",
+ggsave(here::here(paste0("outputs/nf_level/plots/nf_level_sfcm_w1_parma_ei05_si_scaled_y_",
                          Sys.Date(), ".jpeg")), plot = ei05_si_scaled_y,
        width = 10, height = 8, dpi = 300)
 
-ggsave(here::here(paste0("outputs/nf_level/plots/nf_level_gfcm_parma_ei05_si03_scaled_y_",
+ggsave(here::here(paste0("outputs/nf_level/plots/nf_level_sfcm_w1_parma_ei05_si03_scaled_y_",
                          Sys.Date(), ".jpeg")), plot = ei05_si03_scaled_y,
        width = 7, height = 7, dpi = 300)
 
-ggsave(here::here(paste0("outputs/nf_level/plots/nf_level_gfcm_parma_ei06_si03_scaled_y_",
+ggsave(here::here(paste0("outputs/nf_level/plots/nf_level_sfcm_w1_parma_ei06_si03_scaled_y_",
                          Sys.Date(), ".jpeg")), plot = ei06_si03_scaled_y,
        width = 7, height = 7, dpi = 300)
 
