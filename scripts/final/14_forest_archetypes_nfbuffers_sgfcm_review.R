@@ -1,14 +1,18 @@
 ################################################################################
 # REVIEW FUZYY C-MEANS PARAMETER SELECTION RESULTS FROM NF LEVEL SPATIAL DATA ##
 # 1. Download and combine all nfbuffers_sgfcm_*.csv results                    ##
-# 1.1 Note that the xxx.R script was run on a high performance computer       ##
-# 2. Filter for parameter combinations with explained inertia >= 0.5          ##
-# 3. Plot the evaluation metrics by k with a facet wrap by m.                 ##
-# 4. Save the figure                                                          ##
-#                                                                             ##
+# 2. Filter the results for explained inertia and silhouette index values     ##
+# 3. Plot the evaluation metrics with k on x and a facet grid of alpha and win##
+# 4. Save the figures                                                         ##
+# 5. Create a plot with 2 y-axis                                              ##
+#  5.1 Create a function to help with plotting                                ##
+#  5.2 Using the function in 5.1 create the different secondary axis          ##
+#  5.3 Generate the 2 y-axis plots                                            ##
+# 6. Save the plots with the dual y-axis                                      ##
 ################################################################################
 
 # 0. Load libraries
+#-------------------------------------------------------------------------------
 library(tidyverse)
 library(here)
 library(ggplot2)
@@ -16,43 +20,52 @@ library(patchwork)
 library(scales)
 
 # 1. Download and combine the parameter selection results
-# for some reason the csvs don't include a column for the beta value. 
-# this happens with the national level data as well.
+#    for some reason the csvs don't include a column for the beta value. 
+#    this happens with the national level data as well.
 #-------------------------------------------------------------------------------
 ## Get a list of all the files in the directory
-file_list <- list.files(path = here::here("outputs/nf_level/sgfcm/"), 
-                        #pattern = "w3", 
+file_list <- list.files(path = here::here("outputs/nf_level/sgfcm/"),
+                        # the window sizes are mislabeled in the csvs but
+                        # source_file 1 is w1, source_file 2 is w2, etc.
+                        pattern = "w1", 
                         full.names = TRUE)
 
 ## Read all files and combine into a dataframe
 nf_sgfcm_df <- map_dfr(file_list, read_csv, .id = "source_file")
 
-# 2. Filter for Explained Inertia >= 0.50 (rounded),
-# Explained inertia >= 0.50 and silhouette index >= 0.3, and
-# Explained inertia >= 0.60 and silhouette index >= 0.3
-# Explained inertia >= 0.50, silhouette index >= 0.3, and spatial inconsistency
-# < 20.0
+# 2. Filter the results for explained inertia and silhouette index values
 #-------------------------------------------------------------------------------
 
+## Explained inertia >= 0.50 (rounded)
 df_ei05 <- nf_sgfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2)) %>%
   filter(Explained.inertia >= 0.5)
 
+## Explained inertia >= 0.50 and silhouette index >= 0.3
 df_ei05_si03 <- nf_sgfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2),
          Silhouette.index = round(Silhouette.index, digits = 2)) %>%
   filter(Explained.inertia >= 0.5 & Silhouette.index >= 0.3)
 
+## Explained inertia >= 0.50, silhouette index >= 0.3, and spatial inconsistency
+## < 1.0
 df_ei05_si03_sp <- nf_sgfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2),
          Silhouette.index = round(Silhouette.index, digits = 2), 
          spConsistency = round(spConsistency, digits = 2)) %>%
   filter(Explained.inertia >= 0.5 & Silhouette.index >= 0.3 & spConsistency < 20.0)
 
+## Explained inertia >= 0.60 and silhouette index >= 0.3
 df_ei06_si03 <- nf_sgfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2),
          Silhouette.index = round(Silhouette.index, digits = 2)) %>%
   filter(Explained.inertia >= 0.6 & Silhouette.index >= 0.3)
+
+## We don't actually need plots here since there is only one option where
+## EI >=0.6, SI>=0.3 and Spatial Inconsistency is <Inf
+
+# 3. Write out the table with the final parameter values
+#-------------------------------------------------------------------------------
 
 # 3. Plot Explained Inertia and Silhouette Index y with k 
 # on x and facet wrapped by m
@@ -76,7 +89,6 @@ si <-
   
 ei
 si
-
 ei / si
 
 # 4. Save the figure
@@ -116,7 +128,7 @@ ei05_si_scaled_y <- ggplot(df_ei05, aes(k)) +
   geom_point(aes(y = sec1$fwd(Silhouette.index)), colour = "red", alpha = 0.5) +
   scale_y_continuous(sec.axis = sec_axis(~sec1$rev(.), name = "Silhouette.index")) + 
   facet_grid(rows = vars(alpha), cols = vars(beta)) +
-  labs(title = "National Level SGFCM: Explained Inertia >= 0.5")
+  labs(title = "National Level SGFCM 3x3 window: \nExplained Inertia >= 0.5")
 ei05_si_scaled_y
 
 ei05_si03_scaled_y <- ggplot(df_ei05_si03, aes(k)) +
@@ -124,7 +136,7 @@ ei05_si03_scaled_y <- ggplot(df_ei05_si03, aes(k)) +
   geom_point(aes(y = sec2$fwd(Silhouette.index)), colour = "red", alpha = 0.5) + 
   scale_y_continuous(sec.axis = sec_axis(~sec2$rev(.), name = "Silhouette.index")) + 
   facet_grid(rows = vars(alpha), cols = vars(m)) +
-  labs(title = "National Level SFCM: Explained Inertia >= 0.5 & \nSilhouette Index >= 0.3")
+  labs(title = "National Level SGFCM 3x3 window: \nExplained Inertia >= 0.5 & Silhouette Index >= 0.3")
 ei05_si03_scaled_y
 
 ei06_si03_scaled_y <- ggplot(df_ei06_si03, aes(k)) +
@@ -132,7 +144,7 @@ ei06_si03_scaled_y <- ggplot(df_ei06_si03, aes(k)) +
   geom_point(aes(y = sec3$fwd(Silhouette.index)), colour = "red", alpha = 0.5) + 
   scale_y_continuous(sec.axis = sec_axis(~sec3$rev(.), name = "Silhouette.index")) + 
   facet_grid(rows = vars(alpha), cols = vars(m)) +
-  labs(title = "National Level SFCM: Explained Inertia >= 0.6 & \nSilhouette Index >= 0.3")
+  labs(title = "National Level SGFCM: \nExplained Inertia >= 0.6 & Silhouette Index >= 0.3")
 ei06_si03_scaled_y
 
 # 6. Save the figures with the dual y-axis
