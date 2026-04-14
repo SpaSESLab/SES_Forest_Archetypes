@@ -1,14 +1,18 @@
 ################################################################################
 # REVIEW FUZYY C-MEANS PARAMETER SELECTION RESULTS FROM NF LEVEL SPATIAL DATA ##
 # 1. Download and combine all nfbuffers_sfcm_*.csv results                    ##
-# 1.1 Note that the xxx.R script was run on a high performance computer       ##
-# 2. Filter for parameter combinations with explained inertia >= 0.5          ##
-# 3. Plot the evaluation metrics by k with a facet wrap by m.                 ##
-# 4. Save the figure                                                          ##
-#                                                                             ##
+# 2. Filter the results for explained inertia and silhouette index values     ##
+# 3. Plot the evaluation metrics with k on x and a facet grid of alpha and win##
+# 4. Save the figures                                                         ##
+# 5. Create a plot with 2 y-axis                                              ##
+#  5.1 Create a function to help with plotting                                ##
+#  5.2 Using the function in 5.1 create the different secondary axis          ##
+#  5.3 Generate the 2 y-axis plots                                            ##
+# 6. Save the plots with the dual y-axis                                      ##
 ################################################################################
 
 # 0. Load libraries
+#-------------------------------------------------------------------------------
 library(tidyverse)
 library(here)
 library(ggplot2)
@@ -25,36 +29,40 @@ file_list <- list.files(path = here::here("outputs/nf_level/sfcm/"),
 ## Read all files and combine into a dataframe
 nf_sfcm_df <- map_dfr(file_list, read_csv, .id = "source_file")
 
-# 2. Filter for Explained Inertia >= 0.50 (rounded),
-# Explained inertia >= 0.50 and silhouette index >= 0.3, and
-# Explained inertia >= 0.60 and silhouette index >= 0.3
-# Explained inertia >= 0.50, silhouette index >= 0.3, and spatial inconsistency
-# < 1.0
+# 2. Filter the results for explained inertia and silhouette index values
 #-------------------------------------------------------------------------------
 
+## Explained inertia >= 0.50 (rounded)
 df_ei05 <- nf_sfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2)) %>%
   filter(Explained.inertia >= 0.5)
 
+## Explained inertia >= 0.50 and silhouette index >= 0.3
 df_ei05_si03 <- nf_sfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2),
          Silhouette.index = round(Silhouette.index, digits = 2)) %>%
   filter(Explained.inertia >= 0.5 & Silhouette.index >= 0.3)
 
+## Explained inertia >= 0.50, silhouette index >= 0.3, and spatial inconsistency
+## < 1.0
 df_ei05_si03_sp <- nf_sfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2),
          Silhouette.index = round(Silhouette.index, digits = 2), 
          spConsistency = round(spConsistency, digits = 2)) %>%
   filter(Explained.inertia >= 0.5 & Silhouette.index >= 0.3 & spConsistency < 1.0)
 
+## Explained inertia >= 0.60 and silhouette index >= 0.3
 df_ei06_si03 <- nf_sfcm_df %>%
   mutate(Explained.inertia = round(Explained.inertia, digits = 2),
          Silhouette.index = round(Silhouette.index, digits = 2)) %>%
   filter(Explained.inertia >= 0.6 & Silhouette.index >= 0.3)
 
-# 3. Plot Explained Inertia and Silhouette Index y with k 
-# on x and facet wrapped by m
+# 3. Plot Explained Inertia and Silhouette Index y with k on x and 
+#    facet grid for the alpha and window values
 #-------------------------------------------------------------------------------
+## NOTE: I didn't take the time to write the script such that changing the df 
+## will automatically update the resulting plot. There is some manual updates
+## to the plot title and the file name if you change the df. 
 
 df <- df_ei05_si03
 
@@ -68,13 +76,15 @@ si <- ggplot(df, aes(k, Silhouette.index)) +
   geom_point(size = 0.5, color="blue") +
   facet_grid(rows = vars(alpha), cols = vars(window))
 
+# Quick check of each plot and the stacked plot
 ei
 si
-
 ei / si
 
 # 4. Save the figure
 #-------------------------------------------------------------------------------
+## NOTE: There are some manual updates to the file name if you change the df in 
+## section 3. 
 
 sfmc_plot <- ei / si 
 
@@ -84,8 +94,10 @@ ggsave(here::here(paste0("outputs/nf_level/plots/nf_buffers_sfcm_params_ei05_si0
 
 # 5. Function and code for plotting with 2 y-axis
 #-------------------------------------------------------------------------------
-# From https://stackoverflow.com/questions/3099219/ggplot-with-2-y-axes-on-each-side-and-different-scales/66055331#66055331
-# Function factory for secondary axis transforms
+## 5.1 
+## Create a function to help facilitate plotting with 2 y-axis
+## From https://stackoverflow.com/questions/3099219/ggplot-with-2-y-axes-on-each-side-and-different-scales/66055331#66055331
+## Function factory for secondary axis transforms
 train_sec <- function(primary, secondary, na.rm = TRUE) {
   # Thanks Henry Holm for including the na.rm argument!
   from <- range(secondary, na.rm = na.rm)
@@ -101,10 +113,14 @@ train_sec <- function(primary, secondary, na.rm = TRUE) {
   list(fwd = forward, rev = reverse)
 }
 
+## 5.2 
+## Using the function in 5.1 create the different secondary axis
 sec1 <- with(df_ei05, train_sec(Explained.inertia, Silhouette.index))
 sec2 <- with(df_ei05_si03, train_sec(Explained.inertia, Silhouette.index))
 sec3 <- with(df_ei06_si03, train_sec(Explained.inertia, Silhouette.index))
 
+## 5.3 
+## Generate the 2 y-axis plots
 ei05_si_scaled_y <- ggplot(df_ei05, aes(k)) +
   geom_point(aes(y = Explained.inertia), colour = "blue", alpha = 0.5) +
   geom_point(aes(y = sec1$fwd(Silhouette.index)), colour = "red", alpha = 0.5) +
